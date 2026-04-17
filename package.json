@@ -1,0 +1,26 @@
+{
+  "name": "claude-code-ui",
+  "version": "0.1.0",
+  "description": "A local web UI to browse your Claude Code sessions",
+  "type": "module",
+  "scripts": {
+    "start": "bun run server.ts",
+    "dev": "bun --watch run server.ts"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "sessions",
+    "viewer",
+    "ui"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dbreugne/claude-code-ui.git"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
