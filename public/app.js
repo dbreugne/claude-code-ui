@@ -165,7 +165,11 @@ function renderSessions() {
       const branch = s.gitBranch ? `<span class="branch">${escape(s.gitBranch)}</span>` : "";
       html.push(`
         <div class="session-item ${s.sessionId === state.activeSession ? "active" : ""}" data-id="${s.sessionId}">
-          <div class="session-title">${escape(s.title || "(untitled)")}</div>
+          <div class="session-actions">
+            <button class="session-action" data-action="rename" title="Rename">✎</button>
+            <button class="session-action danger" data-action="delete" title="Delete">✕</button>
+          </div>
+          <div class="session-title" data-title>${escape(s.title || "(untitled)")}</div>
           ${s.summary && s.summary !== s.title ? `<div class="session-summary">${escape(s.summary)}</div>` : ""}
           <div class="session-meta-line">
             <span>${escape(fmtRelative(s.lastTs))}</span>
@@ -179,8 +183,98 @@ function renderSessions() {
   }
   $sessions.innerHTML = html.join("");
   $sessions.querySelectorAll(".session-item").forEach((el) => {
-    el.onclick = () => selectSession(el.dataset.id);
+    el.onclick = (e) => {
+      if (e.target.closest(".session-actions")) return;
+      selectSession(el.dataset.id);
+    };
+    el.querySelector('[data-action="rename"]').onclick = (e) => {
+      e.stopPropagation();
+      startRename(el);
+    };
+    el.querySelector('[data-action="delete"]').onclick = (e) => {
+      e.stopPropagation();
+      confirmDelete(el);
+    };
   });
+}
+
+function startRename(itemEl) {
+  const id = itemEl.dataset.id;
+  const sess = state.sessions.find((s) => s.sessionId === id);
+  const titleEl = itemEl.querySelector("[data-title]");
+  const current = sess?.title || "";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "rename-input";
+  input.value = current;
+  input.onclick = (e) => e.stopPropagation();
+  input.onkeydown = async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      await commitRename(id, input.value);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      titleEl.textContent = current;
+    }
+  };
+  input.onblur = async () => {
+    await commitRename(id, input.value);
+  };
+  titleEl.innerHTML = "";
+  titleEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+async function commitRename(id, newTitle) {
+  const sess = state.sessions.find((s) => s.sessionId === id);
+  if (!sess) return;
+  const trimmed = newTitle.trim();
+  if (trimmed === (sess.title || "")) {
+    renderSessions();
+    return;
+  }
+  await fetch(`/api/title/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title: trimmed }),
+  });
+  sess.title = trimmed || sess.originalTitle || "(untitled)";
+  sess.customTitle = trimmed || null;
+  applyFilter();
+  if (state.activeSession === id) {
+    renderMeta(sess);
+  }
+}
+
+function confirmDelete(itemEl) {
+  const btn = itemEl.querySelector('[data-action="delete"]');
+  if (btn.classList.contains("confirm")) {
+    deleteSession(itemEl.dataset.id);
+    return;
+  }
+  btn.classList.add("confirm");
+  btn.textContent = "delete?";
+  const reset = () => {
+    btn.classList.remove("confirm");
+    btn.textContent = "✕";
+  };
+  setTimeout(reset, 3000);
+}
+
+async function deleteSession(id) {
+  await fetch(
+    `/api/session/${encodeURIComponent(state.activeProject)}/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
+  state.sessions = state.sessions.filter((s) => s.sessionId !== id);
+  if (state.activeSession === id) {
+    state.activeSession = null;
+    $meta.classList.remove("visible");
+    $thread.innerHTML =
+      '<div class="empty-state"><div class="empty-icon">◐</div><div class="empty-title">Session deleted</div><div class="empty-sub">Moved to .trash — recoverable from <code>~/.claude/projects/&lt;project&gt;/.trash/</code></div></div>';
+  }
+  applyFilter();
 }
 
 async function selectSession(id) {
@@ -308,4 +402,21 @@ function renderThread(entries) {
 }
 
 $search.addEventListener("input", applyFilter);
+
+// Theme
+const THEME_KEY = "claude-code-ui:theme";
+const $themeToggle = document.getElementById("theme-toggle");
+function applyTheme(theme) {
+  document.documentElement.classList.toggle("light", theme === "light");
+  $themeToggle.textContent = theme === "light" ? "☀" : "☾";
+  $themeToggle.title = theme === "light" ? "Switch to dark" : "Switch to light";
+}
+const saved = localStorage.getItem(THEME_KEY) || "dark";
+applyTheme(saved);
+$themeToggle.onclick = () => {
+  const next = document.documentElement.classList.contains("light") ? "dark" : "light";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+};
+
 loadProjects();

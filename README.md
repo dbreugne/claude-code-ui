@@ -17,6 +17,9 @@ Everything runs **100% locally**. Your sessions never leave your machine.
 - Rich session header: session ID (click to copy), topic, duration, message breakdown, token usage, tools used, model, git branch, cwd, version
 - Full thread rendering with collapsible `thinking`, `tool_use`, and `tool_result` blocks
 - Inline markdown (bold, inline code, code blocks, links)
+- **Rename** any session (stored in `~/.claude-code-ui/titles.json`, never modifies the JSONL)
+- **Safe delete** (moves the JSONL to `.trash/` in the project folder, recoverable by hand)
+- **Light & dark themes** — toggle in the sidebar, remembered via localStorage
 - No build step, no database, no cloud — just Bun + three static files
 
 ## Screenshot
@@ -54,6 +57,8 @@ That's it. Three endpoints:
 | `GET /api/projects` | List Claude Code project folders |
 | `GET /api/sessions?project=<slug>` | List sessions in a project with summary + stats |
 | `GET /api/session/<slug>/<session-id>` | Full parsed session entries |
+| `DELETE /api/session/<slug>/<session-id>` | Move session to `.trash/` (recoverable) |
+| `PUT /api/title/<session-id>` | Set or clear a custom session title |
 
 ## Project structure
 

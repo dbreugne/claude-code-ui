@@ -1,10 +1,30 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, writeFile, stat, mkdir, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 const PUBLIC_DIR = join(import.meta.dir, "public");
 const PORT = Number(process.env.PORT ?? 4477);
+const CONFIG_DIR = join(homedir(), ".claude-code-ui");
+const TITLES_FILE = join(CONFIG_DIR, "titles.json");
+
+async function loadTitles(): Promise<Record<string, string>> {
+  try {
+    const raw = await readFile(TITLES_FILE, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function saveTitle(sessionId: string, title: string) {
+  await mkdir(CONFIG_DIR, { recursive: true });
+  const titles = await loadTitles();
+  if (title.trim()) titles[sessionId] = title.trim().slice(0, 200);
+  else delete titles[sessionId];
+  await writeFile(TITLES_FILE, JSON.stringify(titles, null, 2));
+  return titles;
+}
 
 type Entry = Record<string, any>;
 
@@ -143,6 +163,7 @@ async function parseJsonl(path: string): Promise<Entry[]> {
 async function listSessions(projectSlug: string) {
   const dir = join(PROJECTS_DIR, projectSlug);
   const files = (await readdir(dir)).filter((f) => f.endsWith(".jsonl"));
+  const titles = await loadTitles();
 
   const out: any[] = [];
 
@@ -157,10 +178,14 @@ async function listSessions(projectSlug: string) {
       const last = messages[messages.length - 1];
       const topic = buildTopic(entries);
       const stats = computeStats(entries);
+      const sessionId = f.replace(/\.jsonl$/, "");
+      const customTitle = titles[sessionId];
 
       out.push({
-        sessionId: f.replace(/\.jsonl$/, ""),
-        title: topic.title || "(untitled)",
+        sessionId,
+        title: customTitle || topic.title || "(untitled)",
+        originalTitle: topic.title || "",
+        customTitle: customTitle || null,
         summary: topic.summary,
         firstTs: first?.timestamp ?? null,
         lastTs: last?.timestamp ?? null,
@@ -185,6 +210,19 @@ async function getSession(projectSlug: string, sessionId: string) {
   const full = join(PROJECTS_DIR, projectSlug, `${sessionId}.jsonl`);
   const entries = await parseJsonl(full);
   return entries;
+}
+
+const SAFE_ID = /^[a-zA-Z0-9_-]+$/;
+
+async function deleteSession(projectSlug: string, sessionId: string) {
+  if (!SAFE_ID.test(sessionId)) throw new Error("invalid session id");
+  if (projectSlug.includes("/") || projectSlug.includes("..")) throw new Error("invalid project");
+  const src = join(PROJECTS_DIR, projectSlug, `${sessionId}.jsonl`);
+  const trashDir = join(PROJECTS_DIR, projectSlug, ".trash");
+  await mkdir(trashDir, { recursive: true });
+  const dest = join(trashDir, `${sessionId}.jsonl.${Date.now()}`);
+  await rename(src, dest);
+  return { ok: true, movedTo: dest };
 }
 
 function json(data: unknown, init: ResponseInit = {}) {
@@ -215,7 +253,21 @@ Bun.serve({
         return json(await listSessions(project));
       }
       const m = p.match(/^\/api\/session\/([^/]+)\/([^/]+)$/);
-      if (m) return json(await getSession(decodeURIComponent(m[1]), decodeURIComponent(m[2])));
+      if (m) {
+        const project = decodeURIComponent(m[1]);
+        const id = decodeURIComponent(m[2]);
+        if (req.method === "DELETE") return json(await deleteSession(project, id));
+        return json(await getSession(project, id));
+      }
+      const t = p.match(/^\/api\/title\/([^/]+)$/);
+      if (t && req.method === "PUT") {
+        const id = decodeURIComponent(t[1]);
+        if (!SAFE_ID.test(id)) return json({ error: "invalid id" }, { status: 400 });
+        const body = await req.json().catch(() => ({}));
+        const title = typeof body?.title === "string" ? body.title : "";
+        await saveTitle(id, title);
+        return json({ ok: true });
+      }
     } catch (err: any) {
       return json({ error: err?.message ?? String(err) }, { status: 500 });
     }

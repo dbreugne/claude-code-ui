@@ -15,11 +15,84 @@
   --assistant-bg: #141419;
   --assistant-border: #232630;
   --chip-bg: #1d1d27;
+  --code-bg: #08080c;
   --danger: #e47070;
   --good: #6fbf8f;
   --radius: 10px;
   --radius-sm: 6px;
   --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+:root.light {
+  --bg: #fafafa;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #f3f3f5;
+  --bg-elev-3: #e8e8ec;
+  --border: #e4e4e9;
+  --border-strong: #d0d0d8;
+  --text: #1a1a1f;
+  --text-muted: #5a5a66;
+  --text-dim: #8a8a96;
+  --accent: #6a5299;
+  --accent-dim: #b08cff;
+  --user-bg: #eef2fb;
+  --user-border: #d6dceb;
+  --assistant-bg: #ffffff;
+  --assistant-border: #e8e8ec;
+  --chip-bg: #f0f0f4;
+  --code-bg: #f5f5f8;
+  --danger: #c93a3a;
+  --good: #2e8555;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+:root.light ::-webkit-scrollbar-thumb {
+  background: #cfcfd6;
+  background-clip: padding-box;
+}
+:root.light ::-webkit-scrollbar-thumb:hover {
+  background: #b8b8c2;
+  background-clip: padding-box;
+}
+:root.light .msg-body code {
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+}
+:root.light .msg-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+}
+:root.light .block-thinking {
+  background: #f4f8ee;
+  border-color: #dbe8c7;
+}
+:root.light .block-thinking summary,
+:root.light .block-thinking .block-content {
+  color: #507a2d;
+}
+:root.light .block-tool-use {
+  background: #f6eff9;
+  border-color: #e2cbee;
+}
+:root.light .block-tool-use summary,
+:root.light .block-tool-use .block-content {
+  color: #6d3b8f;
+}
+:root.light .block-tool-result {
+  background: #eef5f6;
+  border-color: #cddee1;
+}
+:root.light .block-tool-result summary,
+:root.light .block-tool-result .block-content {
+  color: #2e6a71;
+}
+:root.light .msg.summary,
+:root.light .msg.system {
+  background: #fcf7ec;
+  border-color: #ecdbba;
+  color: #8a6224;
+}
+:root.light #session-meta {
+  background: linear-gradient(180deg, #ffffff, #fafafa);
 }
 
 * {
@@ -81,6 +154,29 @@ body {
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;
+}
+.brand h1 {
+  flex: 1;
+}
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 14px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.theme-toggle:hover {
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 .brand-dot {
   width: 8px;
@@ -199,6 +295,65 @@ body {
 }
 .session-item:hover {
   background: var(--bg-elev-2);
+}
+.session-item:hover .session-actions {
+  opacity: 1;
+}
+.session-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.session-action {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: none;
+  background: var(--bg-elev-3);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.session-action:hover {
+  background: var(--bg-elev-2);
+  color: var(--text);
+}
+.session-action.danger:hover {
+  background: #3a1f1f;
+  color: var(--danger);
+}
+:root.light .session-action.danger:hover {
+  background: #fde8e8;
+  color: var(--danger);
+}
+.session-action.confirm {
+  background: var(--danger);
+  color: #fff;
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.rename-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--accent-dim);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
 }
 .session-item.active {
   background: var(--bg-elev-3);
@@ -481,7 +636,7 @@ body {
   border: 1px solid var(--border);
 }
 .msg-body pre {
-  background: #08080c;
+  background: var(--code-bg);
   padding: 12px 14px;
   border-radius: 8px;
   overflow-x: auto;
